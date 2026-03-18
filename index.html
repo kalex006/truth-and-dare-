@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Truth or Dare | Party Edition</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #111;
+            --text: #fff;
+            --truth: #00e5ff; 
+            --dare: #ff0055;  
+            --card-back: #1a1a1a;
+            --border: #333;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align top so scrolling works better */
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 229, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 85, 0.05) 0%, transparent 40%);
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 800px; /* Wider container for more cards */
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 1.8rem;
+            margin: 0 0 10px 0;
+            background: linear-gradient(to right, var(--truth), var(--dare));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+        .hidden { display: none !important; }
+
+        /* --- SETUP SCREEN --- */
+        .input-group { display: flex; gap: 8px; margin-bottom: 20px; }
+        
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+        input:focus { border-color: var(--truth); }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-add { background: var(--truth); color: black; }
+        .btn-start { background: white; color: black; width: 100%; font-size: 1.1rem; box-shadow: 0 0 20px rgba(255,255,255,0.1); margin-top: 10px;}
+
+        .player-list { 
+            list-style: none; padding: 0; margin-bottom: 20px; 
+            max-height: 300px; overflow-y: auto; 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Grid layout for names */
+            gap: 10px;
+        }
+        
+        .player-item {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn { color: var(--dare); cursor: pointer; font-weight: bold; padding-left: 5px;}
+
+        /* --- THE CARD GRID (Optimized for 20+ Players) --- */
+        .card-grid {
+            display: grid;
+            /* Creates as many columns as fit, minimum width 70px (fits nicely on mobile) */
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); 
+            gap: 10px;
+            margin: 10px 0;
+            padding-bottom: 40px;
+        }
+
+        .player-card {
+            background: var(--card-back);
+            /* Aspect ratio makes them look like playing cards */
+            aspect-ratio: 2/3; 
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        /* Pattern on back of card */
+        .player-card::after {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            border: 1px dashed #333;
+            border-radius: 4px;
+        }
+
+        .player-card:hover {
+            transform: translateY(-5px) scale(1.05);
+            border-color: var(--truth);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+            z-index: 10;
+        }
+
+        .card-icon { font-size: 1.5rem; opacity: 0.3; font-weight: bold; }
+
+        /* --- REVEAL SECTION --- */
+        .reveal-section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px 20px;
+            margin-top: 20px;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .picked-label { font-size: 0.8rem; letter-spacing: 2px; color: #666; text-transform: uppercase; }
+        .turn-name {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            margin: 10px 0 40px 0;
+            display: block;
+            text-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        .choice-btns { display: flex; gap: 15px; justify-content: center; }
+        
+        .btn-choice {
+            flex: 1;
+            padding: 20px 10px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            background: transparent;
+            border: 2px solid;
+            color: white;
+            cursor: pointer;
+            max-width: 150px;
+        }
+        .c-truth { border-color: var(--truth); color: var(--truth); }
+        .c-truth:hover { background: var(--truth); color: black; box-shadow: 0 0 25px var(--truth); }
+        
+        .c-dare { border-color: var(--dare); color: var(--dare); }
+        .c-dare:hover { background: var(--dare); color: white; box-shadow: 0 0 25px var(--dare); }
+
+        /* --- RESULT --- */
+        .result-box { margin-top: 20px; }
+        .result-label { font-size: 1rem; letter-spacing: 3px; font-weight:bold; margin-bottom: 15px; display: block; }
+        .result-text { font-size: 1.4rem; line-height: 1.5; margin-bottom: 30px;}
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- PAGE 1: SETUP (Add 20+ Players) -->
+        <div id="view-setup">
+            <h1>Party Setup</h1>
+            <p>Add up to 20+ players.</p>
+
+            <div class="input-group">
+                <input type="text" id="name-input" placeholder="Enter Name..." onkeypress="handleEnter(event)">
+                <button class="btn btn-add" onclick="addPlayer()">ADD</button>
+            </div>
+
+            <!-- List displays as a grid for compactness -->
+            <ul id="player-list" class="player-list"></ul>
+            
+            <div id="count-display" style="color:#666; font-size:0.8rem; margin-bottom:10px;">0 Players Added</div>
+
+            <button class="btn btn-start" onclick="goToGame()">DEAL CARDS</button>
+        </div>
+
+        <!-- PAGE 2: THE CARD GRID -->
+        <div id="view-cards" class="hidden">
+            <h1>Pick A Card</h1>
+            <p>Someone is hiding behind every card...</p>
+            
+            <div id="card-grid" class="card-grid">
+                <!-- Cards inject here -->
+            </div>
+            
+            <button onclick="resetGame()" style="background:transparent; border:none; color:#555; cursor:pointer; font-size:0.9rem;">← Edit Players</button>
+        </div>
+
+        <!-- PAGE 3: REVEAL -->
+        <div id="view-action" class="hidden">
+            
+            <div class="reveal-section">
+                <span class="picked-label">Selected Victim</span>
+                <span id="active-player" class="turn-name">NAME</span>
+
+                <!-- Choice Buttons -->
+                <div id="choice-buttons" class="choice-btns">
+                    <button class="btn-choice c-truth" onclick="revealTask('truth')">TRUTH</button>
+                    <button class="btn-choice c-dare" onclick="revealTask('dare')">DARE</button>
+                </div>
+
+                <!-- Result Text -->
+                <div id="result-area" class="result-box hidden">
+                    <span id="task-type" class="result-label">TRUTH</span>
+                    <div id="task-text" class="result-text">Loading...</div>
+                    <button class="btn" style="background:#333; color:white; border:1px solid #555;" onclick="nextRound()">Reshuffle Cards ➔</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA ---
+        let players = [];
+        
+        // Massive Lists for long games
+        const TRUTHS = [
+            "What is your biggest fear?", "Who is your secret crush?", "Biggest lie you've told?",
+            "Cheated on a test?", "Most embarrassing moment?", "Last Google search?",
+            "Who do you like least here?", "Secret you've never told?", "Last time you cried?",
+            "Have you ever peed in a pool?", "Worst habit?", "Celebrity crush?",
+            "What would you change about yourself?", "Guilty pleasure?", "Worst date ever?",
+            "Have you ever ghosted someone?", "Jealous of anyone here?", "Biggest insecurity?",
+            "Most childish thing you do?", "Who sends the best texts?"
+        ];
+        const DARES = [
+            "10 pushups.", "Show screen time report.", "Eat hot sauce.", "Call crush & hang up.",
+            "Dance with no music (30s).", "Plank (45s).", "Let someone draw on face.",
+            "Post embarrassing photo.", "Bark like a dog.", "Let group style your hair.",
+            "Speak in accent (2 rounds).", "Walk backwards only.", "Impersonate someone here.",
+            "Let group DM someone.", "Hold ice cube in hand.", "Sing a song chorus.",
+            "Spin around 10 times.", "Don't blink for 1 min.", "Smell someone's shoe.",
+            "Let someone tickle you."
+        ];
+
+        // --- DOM ---
+        const views = {
+            setup: document.getElementById('view-setup'),
+            cards: document.getElementById('view-cards'),
+            action: document.getElementById('view-action')
+        };
+        const els = {
+            input: document.getElementById('name-input'),
+            list: document.getElementById('player-list'),
+            count: document.getElementById('count-display'),
+            grid: document.getElementById('card-grid'),
+            activeName: document.getElementById('active-player'),
+            choices: document.getElementById('choice-buttons'),
+            resultArea: document.getElementById('result-area'),
+            taskType: document.getElementById('task-type'),
+            taskText: document.getElementById('task-text')
+        };
+
+        // --- SETUP ---
+        function handleEnter(e) { if(e.key === 'Enter') addPlayer(); }
+
+        function addPlayer() {
+            const name = els.input.value.trim();
+            if(!name) return;
+            players.push(name);
+            els.input.value = '';
+            renderList();
+        }
+
+        function removePlayer(idx) {
+            players.splice(idx, 1);
+            renderList();
+        }
+
+        function renderList() {
+            els.list.innerHTML = players.map((p, i) => `
+                <li class="player-item">
+                    ${p} <span class="delete-btn" onclick="removePlayer(${i})">×</span>
+                </li>
+            `).join('');
+            els.count.innerText = `${players.length} Players Added`;
+        }
+
+        function resetGame() {
+            views.setup.classList.remove('hidden');
+            views.cards.classList.add('hidden');
+            views.action.classList.add('hidden');
+        }
+
+        // --- GAME LOGIC ---
+        function goToGame() {
+            if(players.length < 2) {
+                alert("Please add at least 2 players!");
+                return;
+            }
+            startRound();
+        }
+
+        function startRound() {
+            views.setup.classList.add('hidden');
+            views.action.classList.add('hidden');
+            views.cards.classList.remove('hidden');
+
+            // Shuffle Players randomly every round
+            const shuffled = [...players].sort(() => 0.5 - Math.random());
+
+            // Render Grid - Logic handles any number of players
+            els.grid.innerHTML = shuffled.map(player => `
+                <div class="player-card" onclick="pickPlayer('${player.replace(/'/g, "\\'")}')">
+                    <span class="card-icon">?</span>
+                </div>
+            `).join('');
+        }
+
+        function pickPlayer(name) {
+            views.cards.classList.add('hidden');
+            views.action.classList.remove('hidden');
+
+            els.activeName.innerText = name;
+            els.choices.classList.remove('hidden');
+            els.resultArea.classList.add('hidden');
+        }
+
+        function revealTask(type) {
+            els.choices.classList.add('hidden');
+            els.resultArea.classList.remove('hidden');
+
+            if(type === 'truth') {
+                const q = TRUTHS[Math.floor(Math.random() * TRUTHS.length)];
+                els.taskType.innerText = "TRUTH";
+                els.taskType.style.color = "var(--truth)";
+                els.taskText.innerText = q;
+                els.taskText.style.color = "var(--truth)";
+            } else {
+                const q = DARES[Math.floor(Math.random() * DARES.length)];
+                els.taskType.innerText = "DARE";
+                els.taskType.style.color = "var(--dare)";
+                els.taskText.innerText = q;
+                els.taskText.style.color = "var(--dare)";
+            }
+        }
+
+        function nextRound() {
+            startRound();
+        }
+
+    </script>
+</body>
+</html>
